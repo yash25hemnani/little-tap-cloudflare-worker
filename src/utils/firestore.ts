@@ -1,0 +1,49 @@
+import { DATABASE, FIRESTORE_URL } from '../constants/firebase';
+import type { Fields } from '../types/firestore';
+
+// Reads one document's fields, or null if it doesn't exist
+export async function getDoc(path: string, access: string): Promise<Fields | null> {
+	const res = await fetch(`${FIRESTORE_URL}/${path}`, {
+		headers: { Authorization: `Bearer ${access}` },
+	});
+
+	if (res.status === 404) return null;
+
+	if (!res.ok) throw new Error(`Read ${path} failed: ${await res.text()}`);
+
+	const doc = (await res.json()) as { fields?: Fields };
+
+	return doc.fields ?? {};
+}
+
+export const str = (f: Fields, key: string): string => f[key]?.stringValue ?? '';
+
+// An empty array comes back without `values`
+export const strList = (f: Fields, key: string): string[] => f[key]?.arrayValue?.values?.map((v: any) => v.stringValue as string) ?? [];
+
+// Same as FieldValue.arrayRemove on users/{uid}.fcmTokens
+export async function removeTokens(uid: string, tokens: string[], access: string): Promise<void> {
+	const res = await fetch(`${FIRESTORE_URL}:commit`, {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${access}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			writes: [
+				{
+					transform: {
+						document: `${DATABASE}/documents/users/${uid}`,
+						fieldTransforms: [
+							{
+								fieldPath: 'fcmTokens',
+								removeAllFromArray: { values: tokens.map((t) => ({ stringValue: t })) },
+							},
+						],
+					},
+				},
+			],
+		}),
+	});
+	if (!res.ok) console.error(`Token cleanup failed: ${await res.text()}`);
+}
