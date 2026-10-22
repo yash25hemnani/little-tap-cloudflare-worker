@@ -3,7 +3,7 @@ import type { NotifyBody } from './types/notify';
 import { getAccessToken } from './utils/access-token';
 import { verifyCaller } from './utils/auth';
 import { sendPush } from './utils/fcm';
-import { getDoc, removeTokens, str, strList } from './utils/firestore';
+import { getDoc, removeTokens, steps, str, strList } from './utils/firestore';
 import { isId } from './utils/validate';
 
 // Sends a push to the partner after a tap is saved.
@@ -54,12 +54,24 @@ export default {
 			const tokens = partner ? strList(partner, 'fcmTokens') : [];
 			if (tokens.length === 0) return new Response(null, { status: 204 });
 
-			// Build notification message and send
+			// Build the message; FCM data values must all be strings
 			const name = (me && str(me, 'name')) || 'Your partner';
-			const title = `${name} sent you a tap`;
-			const text = str(moment, 'title');
+			// The partner's Vibration setting, on unless turned off
+			const vibrate = partner?.vibrationEnabled?.booleanValue !== false;
 
-			const results = await Promise.all(tokens.map((t) => sendPush(t, title, text, { coupleId, momentId }, access)));
+			const data = {
+				coupleId,
+				momentId,
+				// The feeling leads, e.g. "Missing you" / "A little tap from Yash"
+				title: str(moment, 'title') || 'A little tap',
+				body: `A little tap from ${name}`,
+				// Feeling colour as an ARGB int, used to tint the notification
+				color: moment.color?.integerValue ?? '',
+				// Empty means don't buzz
+				vibration: vibrate ? JSON.stringify(steps(moment, 'vibration')) : '',
+			};
+
+			const results = await Promise.all(tokens.map((t) => sendPush(t, data, access)));
 
 			// Cleanup runs after the response is sent
 			const dead = tokens.filter((_, i) => !results[i]);

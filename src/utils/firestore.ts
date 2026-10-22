@@ -21,6 +21,13 @@ export const str = (f: Fields, key: string): string => f[key]?.stringValue ?? ''
 // An empty array comes back without `values`
 export const strList = (f: Fields, key: string): string[] => f[key]?.arrayValue?.values?.map((v: any) => v.stringValue as string) ?? [];
 
+// Moment's vibration as plain [{ms, amp}] steps; integers come back as strings
+export const steps = (f: Fields, key: string): { ms: number; amp: number }[] =>
+	f[key]?.arrayValue?.values?.map((v: any) => ({
+		ms: Number(v.mapValue?.fields?.ms?.integerValue ?? 0),
+		amp: Number(v.mapValue?.fields?.amp?.integerValue ?? 0),
+	})) ?? [];
+
 // Same as FieldValue.arrayRemove on users/{uid}.fcmTokens
 export async function removeTokens(uid: string, tokens: string[], access: string): Promise<void> {
 	const res = await fetch(`${FIRESTORE_URL}:commit`, {

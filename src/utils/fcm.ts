@@ -1,7 +1,8 @@
 import { FCM_URL } from '../constants/firebase';
 
-// Sends to one phone; returns false only when the token is dead
-export async function sendPush(token: string, title: string, body: string, data: Record<string, string>, access: string): Promise<boolean> {
+// Sends to one phone; returns false only when the token is dead.
+// Data-only, so the app shows the notification and plays the feeling's vibration itself
+export async function sendPush(token: string, data: Record<string, string>, access: string): Promise<boolean> {
 	const res = await fetch(FCM_URL, {
 		method: 'POST',
 		headers: {
@@ -10,10 +11,9 @@ export async function sendPush(token: string, title: string, body: string, data:
 		},
 		body: JSON.stringify({
 			message: {
-				token,
-				notification: { title, body },
+				fid: token,
 				data,
-				// Delivered promptly even when the phone is idle
+				// Wakes the closed app, so its background handler runs
 				android: { priority: 'HIGH' },
 			},
 		}),
