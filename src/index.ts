@@ -1,3 +1,4 @@
+import { sendReminders } from './reminders';
 import type { Env } from './types/env';
 import type { NotifyBody } from './types/notify';
 import { getAccessToken } from './utils/access-token';
@@ -82,5 +83,10 @@ export default {
 			console.error(e);
 			return new Response('Server error', { status: 500 });
 		}
+	},
+
+	// Daily reminder runs: 09:00 IST for tomorrow's events, 00:00 IST for today's
+	async scheduled(event, env, ctx) {
+		ctx.waitUntil(sendReminders(env, event.cron === '30 3 * * *' ? 'tomorrow' : 'today'));
 	},
 } satisfies ExportedHandler<Env>;

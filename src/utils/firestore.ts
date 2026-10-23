@@ -54,3 +54,24 @@ export async function removeTokens(uid: string, tokens: string[], access: string
 	});
 	if (!res.ok) console.error(`Token cleanup failed: ${await res.text()}`);
 }
+
+// Every couples/*/events doc with its full path; a collection group query
+export async function listEvents(access: string): Promise<{ name: string; fields: Fields }[]> {
+	const res = await fetch(`${FIRESTORE_URL}:runQuery`, {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${access}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			structuredQuery: { from: [{ collectionId: 'events', allDescendants: true }] },
+		}),
+	});
+
+	if (!res.ok) throw new Error(`List events failed: ${await res.text()}`);
+
+	// One item per result; an empty result is a single item without `document`
+	const rows = (await res.json()) as { document?: { name: string; fields?: Fields } }[];
+
+	return rows.flatMap((r) => (r.document ? [{ name: r.document.name, fields: r.document.fields ?? {} }] : []));
+}
